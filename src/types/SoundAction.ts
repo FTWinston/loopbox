@@ -10,5 +10,5 @@ export type SoundAction = {
     type: 'stop';
 } | {
     type: 'addTrack';
-    audio: HTMLAudioElement;
+    audio: AudioBuffer;
 }

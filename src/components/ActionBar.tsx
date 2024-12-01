@@ -2,17 +2,17 @@
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
+import { styled, useTheme } from '@mui/material/styles';
+import Fab from '@mui/material/Fab';
+import Box from '@mui/material/Box';
+import Zoom from '@mui/material/Zoom';
 import MenuIcon from '@mui/icons-material/Menu';
 import HeadphonesIcon from '@mui/icons-material/Headset';
 import HeadphonesOffIcon from '@mui/icons-material/HeadsetOff';
 import MoreIcon from '@mui/icons-material/MoreVert';
-import { styled, useTheme } from '@mui/material/styles';
-import Fab from '@mui/material/Fab';
-import Box from '@mui/material/Box';
 import RecordIcon from '@mui/icons-material/Mic';
 import PlayIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
-import Zoom from '@mui/material/Zoom';
 import { useEffect, useRef } from 'react';
 import { SoundState } from '../types/SoundState';
 import { SoundAction } from '../types/SoundAction';
@@ -39,6 +39,9 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
 
     const recordingAudioChunks = useRef<Blob[]>([]);
     const recorder = useRef<MediaRecorder>();
+    const trackSourceNodes = useRef<AudioBufferSourceNode[]>([]);
+    
+    const audioContext = soundState.audioContext;
 
     useEffect(() => {
         const accessMicrophone = async () => {
@@ -54,12 +57,13 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                 recordingAudioChunks.current = [];
             }
         
-            recorder.current.onstop = () => {
+            recorder.current.onstop = async () => {
                 const audioBlob = new Blob(recordingAudioChunks.current, { type: 'audio/wav' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-            
-                soundDispatch({ type: 'addTrack', audio });
+                const buffer = await audioBlob.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(buffer);
+
+                soundDispatch({ type: 'addTrack', audio: audioBuffer });
+                recordingAudioChunks.current = [];
             };
 
             soundDispatch({ type: 'accessGranted' });
@@ -107,7 +111,17 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                         <Fab
                             color="secondary"
                             aria-label="playback"
-                            onClick={() => soundDispatch({ type: 'play' })}
+                            onClick={() => {
+                                for (const track of soundState.tracks) {
+                                    const source = soundState.audioContext.createBufferSource();
+                                    source.buffer = track.audioBuffer;
+                                    source.connect(soundState.audioContext.destination);
+                                    source.start();
+                                    trackSourceNodes.current.push(source);
+                                }
+
+                                soundDispatch({ type: 'play' })
+                            }}
                             disabled={disablePlayback}
                             sx={{backgroundColor: disablePlayback ? `${theme.palette.grey[800]} !important` : undefined}}
                         >
@@ -128,8 +142,16 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                             color="error"
                             aria-label="stop"
                             onClick={() => {
+                                if (soundState.mode === 'recording') {
+                                    recorder.current?.stop();
+                                }
+                                else if (soundState.mode === 'playing') {
+                                    for (const trackSourceNode of trackSourceNodes.current) {
+                                        trackSourceNode.stop();
+                                    }
+                                    trackSourceNodes.current = [];
+                                }
                                 soundDispatch({ type: 'stop' })
-                                recorder.current?.stop();
                             }}
                         >
                             <StopIcon />

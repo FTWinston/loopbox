@@ -1,9 +1,14 @@
 import { SoundAction } from '../types/SoundAction';
 import { SoundState } from '../types/SoundState';
+import { TrackState } from '../types/TrackState';
 
 export function soundStateReducer(soundState: SoundState, action: SoundAction): SoundState {
     switch (action.type) {
         case 'accessGranted': {
+            if (soundState.audioContext.state === 'suspended') {
+                soundState.audioContext.resume();
+            }
+
             return {
                 ...soundState,
                 mode: 'stopped',
@@ -24,8 +29,6 @@ export function soundStateReducer(soundState: SoundState, action: SoundAction): 
                 return soundState;
             }
             
-            soundState.tracks[0].audio.play();
-
             // TODO: trigger a stop action when playback is done.
 
             return {
@@ -44,8 +47,12 @@ export function soundStateReducer(soundState: SoundState, action: SoundAction): 
             return soundState;
         }
         case 'addTrack': {
-            const newTrack = {
-                audio: action.audio,
+            if (soundState.mode === 'noAccess') {
+                return soundState;
+            }
+
+            const newTrack: TrackState = {
+                audioBuffer: action.audio,
                 volume: 1,
                 muted: false
             };
