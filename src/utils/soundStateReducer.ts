@@ -14,6 +14,12 @@ export function soundStateReducer(soundState: SoundState, action: SoundAction): 
                 mode: 'stopped',
             };
         }
+        case 'setWorkspace': {
+            return {
+                ...soundState,
+                workspace: action.workspace,
+            };
+        }
         case 'record': {
             if (soundState.mode !== 'stopped') {
                 return soundState;

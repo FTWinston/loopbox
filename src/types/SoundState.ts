@@ -1,6 +1,8 @@
 import { TrackState } from './TrackState';
+import { initialWorkspaceState, WorkspaceState } from './WorkspaceState';
 
 export type SoundState = {
+    workspace: WorkspaceState;
     mode: 'noAccess' | 'recording' | 'playing' | 'stopped';
     audioContext: AudioContext;
     headphones: boolean;
@@ -8,6 +10,7 @@ export type SoundState = {
 }
 
 export const initialSoundState: SoundState = {
+    workspace: initialWorkspaceState,
     mode: 'noAccess',
     audioContext: new AudioContext(),
     headphones: false,
