@@ -35,7 +35,9 @@ export function startPlayback(
         }
         else {
             source.loop = true;
+
             // source.loopEnd // TODO: Truncate based on truncateToMultiplesOf and tempo.
+            
             source.onended = () => {
                 // If this was the last track, mark playback as stopped.
                 playingSourceNodes.delete(source);

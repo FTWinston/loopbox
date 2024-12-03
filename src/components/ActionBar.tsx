@@ -45,6 +45,7 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
     const theme = useTheme();
 
     const recorder = useRef<MediaRecorder>();
+    const metronomeSourceNode = useRef<AudioBufferSourceNode>();
     const playingSourceNodes = useRef<Set<AudioBufferSourceNode>>(new Set());
     
     const setStateToStopped = () => soundDispatch({ type: 'stop' });
@@ -99,7 +100,14 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                         <Fab
                             color="primary"
                             aria-label="record"
-                            onClick={() => startRecording(recorder.current, setStateToRecording)}
+                            onClick={() => {
+                                if (recorder.current) {
+                                    startRecording(soundState.audioContext, recorder.current, soundState.workspace.tempo, (oscillator) => {
+                                        metronomeSourceNode.current = oscillator;
+                                        setStateToRecording()
+                                    })
+                                }
+                            }}
                             disabled={disableRecord}
                             sx={{backgroundColor: disableRecord ? `${theme.palette.grey[800]} !important` : undefined}}
                         >
@@ -130,7 +138,10 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                             aria-label="stop"
                             onClick={() => {
                                 if (soundState.mode === 'recording') {
-                                    stopRecording(recorder.current, setStateToStopped);
+                                    stopRecording(recorder.current, metronomeSourceNode.current, () => {
+                                        metronomeSourceNode.current = undefined;
+                                        setStateToStopped()
+                                    });
                                 }
                                 else {
                                     stopPlayback(playingSourceNodes.current, setStateToStopped);
