@@ -6,6 +6,6 @@ export type WorkspaceState = {
 
 export const initialWorkspaceState: WorkspaceState = {
     tempo: 100,
-    introBeats: 8,
+    introBeats: 4,
     truncateToMultiplesOf: 8,
 }

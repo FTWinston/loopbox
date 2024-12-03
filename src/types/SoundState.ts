@@ -3,7 +3,7 @@ import { initialWorkspaceState, WorkspaceState } from './WorkspaceState';
 
 export type SoundState = {
     workspace: WorkspaceState;
-    mode: 'noAccess' | 'recording' | 'playing' | 'stopped';
+    mode: 'noAccess' | 'intro' | 'recording' | 'playing' | 'stopped';
     audioContext: AudioContext;
     headphones: boolean;
     tracks: TrackState[];

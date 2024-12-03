@@ -23,6 +23,7 @@ import { startRecording } from '../utils/startRecording';
 import { startPlayback } from '../utils/startPlayback';
 import { stopRecording } from '../utils/stopRecording';
 import { stopPlayback } from '../utils/stopPlayback';
+import Typography from '@mui/material/Typography';
 
 interface Props {
     soundState: SoundState;
@@ -45,11 +46,14 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
     const theme = useTheme();
 
     const recorder = useRef<MediaRecorder>();
+    const introTimeout = useRef<() => void>();
+    const [introBeats, setIntroBeats] = useState(soundState.workspace.introBeats);
     const metronomeSourceNode = useRef<AudioBufferSourceNode>();
     const playingSourceNodes = useRef<Set<AudioBufferSourceNode>>(new Set());
     
     const setStateToStopped = () => soundDispatch({ type: 'stop' });
     const setStateToPlayback = () => soundDispatch({ type: 'play' });
+    const setStateToIntro = () => soundDispatch({ type: 'intro' });
     const setStateToRecording = () => soundDispatch({ type: 'record' });
 
     useEffect(() => {
@@ -76,6 +80,7 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
     const disableRecord = soundState.mode === 'noAccess';
     const disablePlayback = soundState.tracks.length === 0;
     const disableSettings = showingSettings || soundState.mode !== 'stopped';
+    const introMode = soundState.mode === 'intro';
 
     return (
         <AppBar position="fixed" color="primary" sx={{ top: 'auto', bottom: 0 }}>
@@ -102,10 +107,25 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                             aria-label="record"
                             onClick={() => {
                                 if (recorder.current) {
-                                    startRecording(soundState.audioContext, recorder.current, soundState.workspace.tempo, (oscillator) => {
-                                        metronomeSourceNode.current = oscillator;
-                                        setStateToRecording()
-                                    })
+                                    startRecording(
+                                        soundState.audioContext,
+                                        recorder.current,
+                                        soundState.workspace.tempo,
+                                        soundState.workspace.introBeats,
+                                        (oscillator, stopIntro) => {
+                                            metronomeSourceNode.current = oscillator;
+                                            introTimeout.current = stopIntro;
+                                            setStateToIntro();
+                                        },
+                                        (beatsRemaining) => {
+                                            if (beatsRemaining === 0) {
+                                                setStateToRecording();
+                                            }
+                                            else {
+                                                setIntroBeats(beatsRemaining);
+                                            }
+                                        }
+                                    )
                                 }
                             }}
                             disabled={disableRecord}
@@ -134,21 +154,23 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                 >
                     <FabBox>
                         <Fab
-                            color="error"
+                            color={introMode ? 'warning' : 'error'}
                             aria-label="stop"
                             onClick={() => {
-                                if (soundState.mode === 'recording') {
+                                if (soundState.mode === 'playing') {
+                                    stopPlayback(playingSourceNodes.current, setStateToStopped);
+                                }
+                                else {
                                     stopRecording(recorder.current, metronomeSourceNode.current, () => {
                                         metronomeSourceNode.current = undefined;
+                                        introTimeout.current?.();
+                                        introTimeout.current = undefined;
                                         setStateToStopped()
                                     });
                                 }
-                                else {
-                                    stopPlayback(playingSourceNodes.current, setStateToStopped);
-                                }
                             }}
                         >
-                            <StopIcon />
+                            {introMode ? <Typography fontWeight="700">{introBeats}</Typography> : <StopIcon />}
                         </Fab>
                     </FabBox>
                 </Zoom>
