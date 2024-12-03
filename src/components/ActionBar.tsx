@@ -3,8 +3,9 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
 import { styled, useTheme } from '@mui/material/styles';
-import Fab from '@mui/material/Fab';
 import Box from '@mui/material/Box';
+import Fab from '@mui/material/Fab';
+import Modal from '@mui/material/Modal';
 import Zoom from '@mui/material/Zoom';
 import MenuIcon from '@mui/icons-material/Tune';
 import HeadphonesIcon from '@mui/icons-material/Headset';
@@ -17,7 +18,11 @@ import { useEffect, useRef, useState } from 'react';
 import { SoundState } from '../types/SoundState';
 import { SoundAction } from '../types/SoundAction';
 import { WorkspaceSettings } from './WorkspaceSettings';
-import Modal from '@mui/material/Modal';
+import { setupMicrophone } from '../utils/setupMicrophone';
+import { startRecording } from '../utils/startRecording';
+import { startPlayback } from '../utils/startPlayback';
+import { stopRecording } from '../utils/stopRecording';
+import { stopPlayback } from '../utils/stopPlayback';
 
 interface Props {
     soundState: SoundState;
@@ -39,39 +44,22 @@ const FabBox = styled(Box)({
 export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
     const theme = useTheme();
 
-    const recordingAudioChunks = useRef<Blob[]>([]);
     const recorder = useRef<MediaRecorder>();
-    const trackSourceNodes = useRef<AudioBufferSourceNode[]>([]);
+    const playingSourceNodes = useRef<Set<AudioBufferSourceNode>>(new Set());
     
-    const audioContext = soundState.audioContext;
+    const setStateToStopped = () => soundDispatch({ type: 'stop' });
+    const setStateToPlayback = () => soundDispatch({ type: 'play' });
+    const setStateToRecording = () => soundDispatch({ type: 'record' });
 
     useEffect(() => {
-        const accessMicrophone = async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const saveAudioTrack = (audio: AudioBuffer) => soundDispatch({ type: 'addTrack', audio });
 
-            recorder.current = new MediaRecorder(stream);
+        const setRecorder = (newRecorder: MediaRecorder) => {
+            recorder.current = newRecorder;
+            setStateToStopped();
+        }
 
-            recorder.current.ondataavailable = event => {
-                recordingAudioChunks.current.push(event.data);
-            };
-        
-            recorder.current.onstart = () => {
-                recordingAudioChunks.current = [];
-            }
-        
-            recorder.current.onstop = async () => {
-                const audioBlob = new Blob(recordingAudioChunks.current, { type: 'audio/wav' });
-                const buffer = await audioBlob.arrayBuffer();
-                const audioBuffer = await audioContext.decodeAudioData(buffer);
-
-                soundDispatch({ type: 'addTrack', audio: audioBuffer });
-                recordingAudioChunks.current = [];
-            };
-
-            soundDispatch({ type: 'accessGranted' });
-        };
-
-        accessMicrophone();
+        setupMicrophone(soundState.audioContext, saveAudioTrack, setRecorder);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -111,10 +99,7 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                         <Fab
                             color="primary"
                             aria-label="record"
-                            onClick={() => {
-                                soundDispatch({ type: 'record' });
-                                recorder.current?.start();
-                            }}
+                            onClick={() => startRecording(recorder.current, setStateToRecording)}
                             disabled={disableRecord}
                             sx={{backgroundColor: disableRecord ? `${theme.palette.grey[800]} !important` : undefined}}
                         >
@@ -123,17 +108,7 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                         <Fab
                             color="secondary"
                             aria-label="playback"
-                            onClick={() => {
-                                for (const track of soundState.tracks) {
-                                    const source = soundState.audioContext.createBufferSource();
-                                    source.buffer = track.audioBuffer;
-                                    source.connect(soundState.audioContext.destination);
-                                    source.start();
-                                    trackSourceNodes.current.push(source);
-                                }
-
-                                soundDispatch({ type: 'play' })
-                            }}
+                            onClick={() => startPlayback(soundState.audioContext, soundState.tracks, playingSourceNodes.current, setStateToPlayback, setStateToStopped)}
                             disabled={disablePlayback}
                             sx={{backgroundColor: disablePlayback ? `${theme.palette.grey[800]} !important` : undefined}}
                         >
@@ -155,16 +130,11 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                             aria-label="stop"
                             onClick={() => {
                                 if (soundState.mode === 'recording') {
-                                    recorder.current?.stop();
+                                    stopRecording(recorder.current, setStateToStopped);
                                 }
-                                else if (soundState.mode === 'playing') {
-                                    for (const trackSourceNode of trackSourceNodes.current) {
-                                        trackSourceNode.stop();
-                                        trackSourceNode.disconnect();
-                                    }
-                                    trackSourceNodes.current = [];
+                                else {
+                                    stopPlayback(playingSourceNodes.current, setStateToStopped);
                                 }
-                                soundDispatch({ type: 'stop' })
                             }}
                         >
                             <StopIcon />

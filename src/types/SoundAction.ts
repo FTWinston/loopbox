@@ -6,8 +6,6 @@ export type SoundAction = {
 } | {
     type: 'toggleHeadphones';
 } | {
-    type: 'accessGranted';
-} | {
     type: 'record';
 } | {
     type: 'play';

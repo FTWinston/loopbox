@@ -96,7 +96,7 @@ export const WorkspaceSettings: React.FC<Props> = (props) => {
                 fullWidth
                 value={truncateBeats}
                 onChange={e => setTruncateBeats(e.target.value)}
-                helperText="When tracks have different lengths, shorter ones will be truncated to the nearest multiple of this quantity of beats, so they can be looped neatly"
+                helperText="When tracks have different lengths, shorter ones will be cut short, to the nearest multiple of this quantity of beats, so they can be looped neatly"
                 slotProps={{
                     htmlInput: {
                         type: 'number',

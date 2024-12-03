@@ -4,16 +4,6 @@ import { TrackState } from '../types/TrackState';
 
 export function soundStateReducer(soundState: SoundState, action: SoundAction): SoundState {
     switch (action.type) {
-        case 'accessGranted': {
-            if (soundState.audioContext.state === 'suspended') {
-                soundState.audioContext.resume();
-            }
-
-            return {
-                ...soundState,
-                mode: 'stopped',
-            };
-        }
         case 'setWorkspace': {
             return {
                 ...soundState,
@@ -43,7 +33,11 @@ export function soundStateReducer(soundState: SoundState, action: SoundAction): 
             };
         }
         case 'stop': {
-            if (soundState.mode === 'recording' || soundState.mode === 'playing') {
+            if (soundState.audioContext.state === 'suspended') {
+                soundState.audioContext.resume();
+            }
+
+            if (soundState.mode !== 'stopped') {
                 return {
                     ...soundState,
                     mode: 'stopped',
