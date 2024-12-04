@@ -1,10 +1,16 @@
 export function stopRecording(
     recorder: MediaRecorder | undefined,
-    metronomeSourceNode: AudioBufferSourceNode | undefined,
+    playingSourceNodes: Set<AudioBufferSourceNode>,
     onRecordingStopped: () => void,
 ) {
     recorder?.stop();
-    metronomeSourceNode?.stop();
-    metronomeSourceNode?.disconnect();
+
+    for (const sourceNode of playingSourceNodes) {
+        sourceNode.stop();
+        sourceNode.disconnect();
+    }
+    
+    playingSourceNodes.clear();
+
     onRecordingStopped();
 }

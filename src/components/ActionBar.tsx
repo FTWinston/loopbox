@@ -48,7 +48,6 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
     const recorder = useRef<MediaRecorder>();
     const introTimeout = useRef<() => void>();
     const [introBeats, setIntroBeats] = useState(soundState.workspace.introBeats);
-    const metronomeSourceNode = useRef<AudioBufferSourceNode>();
     const playingSourceNodes = useRef<Set<AudioBufferSourceNode>>(new Set());
     
     const setStateToStopped = () => soundDispatch({ type: 'stop' });
@@ -112,8 +111,10 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                                         recorder.current,
                                         soundState.workspace.tempo,
                                         soundState.workspace.introBeats,
-                                        (oscillator, stopIntro) => {
-                                            metronomeSourceNode.current = oscillator;
+                                        soundState.headphones,
+                                        soundState.tracks,
+                                        playingSourceNodes.current,
+                                        (stopIntro) => {
                                             introTimeout.current = stopIntro;
                                             setStateToIntro();
                                         },
@@ -161,12 +162,15 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                                     stopPlayback(playingSourceNodes.current, setStateToStopped);
                                 }
                                 else {
-                                    stopRecording(recorder.current, metronomeSourceNode.current, () => {
-                                        metronomeSourceNode.current = undefined;
-                                        introTimeout.current?.();
-                                        introTimeout.current = undefined;
-                                        setStateToStopped()
-                                    });
+                                    stopRecording(
+                                        recorder.current, 
+                                        playingSourceNodes.current,
+                                        () => {
+                                            introTimeout.current?.();
+                                            introTimeout.current = undefined;
+                                            setStateToStopped();
+                                        }
+                                    );
                                 }
                             }}
                         >

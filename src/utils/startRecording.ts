@@ -1,9 +1,14 @@
+import { TrackState } from '../types/TrackState';
+
 export function startRecording(
     audioContext: AudioContext,
     recorder: MediaRecorder,
     tempo: number,
     introBeats: number,
-    startIntro: (source: AudioBufferSourceNode, stopIntro: () => void) => void,
+    playbackWhileRecording: boolean,
+    tracks: TrackState[],
+    playingSourceNodes: Set<AudioBufferSourceNode>,
+    startIntro: (stopIntro: () => void) => void,
     setRemainingIntroBeats: (beats: number) => void,
 ) {
     // Define a buffer containing a beat: one short peak followed by silence.
@@ -17,6 +22,7 @@ export function startRecording(
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
     source.loop = true;
+    playingSourceNodes.add(source);
 
     source.connect(audioContext.destination);
     source.start();
@@ -24,13 +30,35 @@ export function startRecording(
     let beatsRemaining = introBeats;
     setRemainingIntroBeats(beatsRemaining);
 
+    const onEndOfIntro = () => {
+        if (playbackWhileRecording) {
+            for (const track of tracks) {
+                // Create a source to play each track.
+                const source = audioContext.createBufferSource();
+                source.buffer = track.audioBuffer;
+                source.connect(audioContext.destination);
+
+                source.loop = true;
+
+                // source.loopEnd // TODO: Truncate based on truncateToMultiplesOf and tempo.
+                
+                // Keep track of this source node, and start playing.
+                playingSourceNodes.add(source);
+
+                source.start();
+            }
+        }
+        
+        recorder.start();
+    }
+
     // Start the recorder once the required number of beats have passed.
     let introTimer: number | undefined = setInterval(() => {
         beatsRemaining--;
         if (beatsRemaining <= 0) {
             clearInterval(introTimer);
             introTimer = undefined;
-            recorder.start();
+            onEndOfIntro();
         }
         setRemainingIntroBeats(beatsRemaining);
     }, beatInterval * 1000);
@@ -43,5 +71,5 @@ export function startRecording(
         }
     }
 
-    startIntro(source, stopIntro);
+    startIntro(stopIntro);
 }
