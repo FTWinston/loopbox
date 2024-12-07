@@ -1,5 +1,5 @@
 {
-  "name": "sound-loop",
+  "name": "loopbox",
   "private": true,
   "version": "0.0.0",
   "type": "module",
