@@ -3,6 +3,8 @@ import { TrackState } from '../types/TrackState';
 export function startPlayback(
     audioContext: AudioContext,
     tracks: TrackState[],
+    tempo: number,
+    truncateToMultiplesOf: number,
     playingSourceNodes: Set<AudioBufferSourceNode>,
     onPlaybackStarted: () => void,
     onPlaybackStopped: () => void,
@@ -12,6 +14,8 @@ export function startPlayback(
     const longestTrack = tracks.reduce((prev, current) => {
         return prev.audioBuffer.duration > current.audioBuffer.duration ? prev : current;
     });
+
+    const truncationInterval = truncateToMultiplesOf * 60 / tempo;
 
     for (const track of tracks) {
         // Create a source to play each track.
@@ -36,8 +40,10 @@ export function startPlayback(
         else {
             source.loop = true;
 
-            // source.loopEnd // TODO: Truncate based on truncateToMultiplesOf and tempo.
-            
+            // Truncate this source so that it loops based on truncateToMultiplesOf and tempo.
+            // This will ensure that it loops in time with the tempo.
+            source.loopEnd = Math.floor(source.buffer.duration / truncationInterval) * truncationInterval;
+
             source.onended = () => {
                 // If this was the last track, mark playback as stopped.
                 playingSourceNodes.delete(source);

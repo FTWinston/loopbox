@@ -137,7 +137,15 @@ export const ActionBar: React.FC<Props> = ({ soundState, soundDispatch }) => {
                         <Fab
                             color="secondary"
                             aria-label="playback"
-                            onClick={() => startPlayback(soundState.audioContext, soundState.tracks, playingSourceNodes.current, setStateToPlayback, setStateToStopped)}
+                            onClick={() => startPlayback(
+                                soundState.audioContext,
+                                soundState.tracks,
+                                soundState.workspace.tempo,
+                                soundState.workspace.truncateToMultiplesOf,
+                                playingSourceNodes.current,
+                                setStateToPlayback,
+                                setStateToStopped
+                            )}
                             disabled={disablePlayback}
                             sx={{backgroundColor: disablePlayback ? `${theme.palette.grey[800]} !important` : undefined}}
                         >

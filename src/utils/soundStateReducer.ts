@@ -34,8 +34,6 @@ export function soundStateReducer(soundState: SoundState, action: SoundAction): 
             if (soundState.mode !== 'stopped' || soundState.tracks.length === 0) {
                 return soundState;
             }
-            
-            // TODO: trigger a stop action when playback is done.
 
             return {
                 ...soundState,
